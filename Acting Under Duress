@@ -1,0 +1,240 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import numpy as np
+import cv2
+import matplotlib
+from matplotlib import pyplot as plt
+
+#get_ipython().run_line_magic('matplotlib', 'inline')
+
+# In[2]:
+
+
+import os
+import pickle
+from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import LinearRegression
+
+# In[3]:
+
+
+#img = cv2.imread("./test_images/ab2.jpg")
+#img.shape
+
+# In[4]:
+
+
+face_cascade = cv2.CascadeClassifier('../opencv/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('../opencv/haarcascade_eye_tree_eyeglasses.xml')
+
+
+# In[5]:
+
+
+def detect_dures_eye(img_path):
+    img = cv2.imread(img_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier('./opencv/haarcascade_frontalface_default.xml')
+    eye_cascade = cv2.CascadeClassifier('./opencv/haarcascade_eye_tree_eyeglasses.xml')
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    (x, y, w, h) = faces[0]
+    face_img = cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+    eye = None
+    number_of_eyes_values = {}
+    cv2.destroyAllWindows()
+    for (x, y, w, h) in faces:
+        face_img = cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        roi_gray = gray[y:y + h, x:x + w]
+        roi_color = face_img[y:y + h, x:x + w]
+        eyes = eye_cascade.detectMultiScale(roi_gray)
+        if len(eyes) == 1:
+            number_of_eyes = 1
+            number_of_eyes_values = {}
+            for (ex, ey, ew, eh) in eyes:
+                cv2.rectangle(roi_color, (ex, ey), (ex + ew, ey + eh), (0, 255, 0), 2)
+                eye_center_x = x + ex + ew // 2
+                eye_center_y = y + ey + eh // 2
+                side = "Left Eye" if eye_center_x < x + w / 2 else "Right Eye"
+                side = "0" if eye_center_x < x + w / 2 else "1"
+                # print(number_of_eyes)
+                # print(side)
+                number_of_eyes_values[f"{number_of_eyes}"] = side
+                number_of_eyes += 1
+                eye = side
+            return eye
+        else:
+            eye = str(2)
+            return eye
+        # return number_of_eyes_values.items()
+        return eye
+    return eye
+
+
+# print(len(number_of_eyes_values))
+# plt.figure()
+# plt.imshow(face_img, cmap='gray')
+# plt.show()
+
+
+# In[6]:
+
+
+MODEL_DIR = "models"
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+
+# In[7]:
+
+
+def train_user_model(user_id, x_train, y_train):
+    # model = SGDClassifier(loss="log_loss", max_iter=1000)
+    model = LinearRegression()
+    model.fit([[x_train]], y_train)
+    model_path = os.path.join(MODEL_DIR, f"user_{user_id}_model.pkl")
+    with open(model_path, "wb") as f:
+        pickle.dump(model, f)
+    print(f"Model saved for user {user_id} at {model_path}")
+
+
+# In[8]:
+
+
+def load_user_model(user_id):
+    model_path = os.path.join(MODEL_DIR, f"user_{user_id}_model.pkl")
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"No Model found for User {user_id} ")
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    return model
+
+
+# In[9]:
+
+
+def predict_with_user_model(user_id, x_test):
+    model = load_user_model(user_id)
+    predictions = model.predict([[x_test]])
+    return predictions
+
+
+# In[10]:
+
+
+def registration_endpoint_with_phone_email(img_path, phone=None, email=None):
+    if len(detect_dures_eye(img_path)) == 1:
+        # write code to train the model here
+        # y_classes = np.array([0.,1],[0,1.])
+        right_or_left_eye = detect_dures_eye(img_path)
+        # y = np.array([0] if right_or_left_eye == "Left Eye" else [1])
+        y = np.array([right_or_left_eye])
+
+        phonee = phone / 10000000000
+        # training_model([[phone]],y)
+        # model = load_model_for_Prediction()
+        # model = training_model()
+        train_user_model(phone, phonee, y)
+        # print("one eye")
+    elif len(detect_dures_eye(img_path)) > 1:
+        # model = training_model()
+        # model.partial_fit([[phone]], y, classes=[0,1])
+        print("more than one eye detected")
+    elif len(detect_dures_eye(img_path)) < 1:
+        print("no eye detected")
+    else:
+        print("special case")
+
+
+# In[11]:
+
+
+# def User_registration_API_endpoint_phone():
+
+
+# In[12]:
+
+
+def login_authorization_and_authentication_phone_endpoint(img_path, phone=None, email=None):
+    phone = phone
+    if len(detect_dures_eye(img_path)) == 1:
+        # write code to predict Dures or non-Duress
+
+        right_or_left_eye = int(detect_dures_eye(img_path))
+        # y = np.array([0] if right_or_left_eye == "Left Eye" else [1])
+
+        phonee = phone / 10000000000
+        # model = load_model_for_Prediction()
+        # print(right_or_left_eye)
+        # load_user_model(phone)
+        y_predicted = predict_with_user_model(phone, phonee)
+        if y_predicted == right_or_left_eye:
+            return "No Duress"
+        else:
+            return "Duress Detected"
+        # return modelll.predict([[phonee]])
+        # print (model.predict([[0.814996519]]))
+        # print(y_predicted)
+        # print("one eye")
+    elif len(detect_dures_eye(img_path)) > 1:
+        print("more than one eye detected")
+    elif len(detect_dures_eye(img_path)) < 1:
+        print("no eye detected")
+    else:
+        print("special case")
+
+
+# In[13]:
+
+
+# registration_endpoint_with_phone_email("./test_images/ab2.jpg", 8149965190, email=None)
+
+
+# In[14]:
+
+
+# registration_endpoint_with_phone_email("./test_images/ab.jpg", 9046195696, email=None)
+
+
+# In[15]:
+
+
+# login_authorization_and_authentication_phone_endpoint("./test_images/ab.jpg", phone=8149965190, email=None)
+
+
+# In[ ]:
+
+
+# In[16]:
+
+
+# login_authorization_and_authentication_phone_endpoint("./test_images/mnj.jpg", phone=9046195696, email=None)
+
+
+# In[17]:
+
+
+class customModel:
+    def __init__(self, user_id):
+        self.phone = user_id
+
+    def train(self, x, y, user_id):
+        # self.model.fit(x, y)
+        train_user_model(user_id, x, y)
+        print("Model Trained")
+
+    def predict(self, x, user_id):
+        return predict_with_user_model(user_id, x)
+        # return self.model.predict(x)
+
+    def registration_endpoint(img_path, phone=None, email=None):
+        img_path = img_path
+        registration_endpoint_with_phone_email(img_path, phone=None, email=None)
+
+    def login_endpoint(img_path, phone=None, email=None):
+        img_path = img_path
+        login_authorization_and_authentication_phone_endpoint(img_path, phone=None, email=None)
+
