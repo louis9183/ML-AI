@@ -1,0 +1,514 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # CUSTOMER CHURN PREDICTION MODEL USING ARTIFICIAL NEURAL NETWORK
+
+# In[22]:
+
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# In[72]:
+
+
+df = pd.read_csv("Customer-Churn.csv")
+
+
+# In[73]:
+
+
+df.head(5)
+
+
+# # Data Exploration
+
+# step 1:
+#       drop customer id column as is not always useful
+
+# In[25]:
+
+
+df.drop('customerID', axis='columns', inplace=True)
+
+
+# In[26]:
+
+
+df.dtypes
+
+
+# Step 2:
+#     # # Total charges column dtype is object compared to monthly charge that is Float. this colum has string dtypes as well. 
+
+# In[27]:
+
+
+df.TotalCharges.values
+
+
+# In[28]:
+
+
+df.MonthlyCharges.values
+
+
+# In[74]:
+
+
+pd.to_numeric(df['TotalCharges'])
+
+
+# In[75]:
+
+
+pd.to_numeric(df['TotalCharges'],errors = 'coerce')
+
+
+# In[31]:
+
+
+pd.to_numeric(df.TotalCharges,errors = 'coerce').isnull()
+
+
+# In[76]:
+
+
+df.dtypes
+
+
+# In[77]:
+
+
+df.iloc[488]
+
+
+# In[78]:
+
+
+len(df[df['TotalCharges'] == ' '])
+
+
+# In[79]:
+
+
+df = df[df['TotalCharges'] != ' ']
+
+
+# In[80]:
+
+
+df.head(1)
+
+
+# In[81]:
+
+
+len(df[df['TotalCharges'] == ' '])
+
+
+# In[82]:
+
+
+df.shape
+
+
+# In[83]:
+
+
+df['TotalCharges'] = pd.to_numeric(df['TotalCharges'])
+
+
+# In[85]:
+
+
+df.TotalCharges.dtypes
+
+
+# # Visualization for Customers Who are leaving/Those not Leaving
+
+# In[86]:
+
+
+tenure_churn_no = df[df.Churn=='No'].tenure
+tenure_churn_yes = df[df.Churn=='Yes'].tenure
+
+
+# In[87]:
+
+
+plt.hist([tenure_churn_yes,tenure_churn_no],color=['green','red'],label=['Churn Yes','Churn No'])
+plt.legend()
+plt.xlabel('tenure')
+plt.ylabel('Number of Customer')
+plt.title('Customer Churn Prediction')
+
+
+# In[88]:
+
+
+def print_unique_col_values(df): 
+    for colum in df:
+        if df[colum].dtypes == 'object':
+            print(colum, df[colum].unique())
+
+
+# In[89]:
+
+
+print_unique_col_values(df)
+
+
+# In[90]:
+
+
+df.replace('No internet service', 'No', inplace=True)
+df.replace('No phone service', 'No', inplace=True)
+
+
+# In[91]:
+
+
+df.replace('No phone service', 'No', inplace=True)
+print_unique_col_values(df)
+
+
+# In[95]:
+
+
+yes_no_columns = ['Partner','Dependents','PhoneService','MultipleLines',
+'OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaperlessBilling','Churn']
+
+
+# In[96]:
+
+
+for col in yes_no_columns:
+    df[col].replace({'Yes':1,'No':0}, inplace=True)
+
+
+# In[98]:
+
+
+df.head(2)
+
+
+# In[99]:
+
+
+df['gender'].replace({'Female':1,'Male':0}, inplace=True)
+
+
+# In[101]:
+
+
+df.head(6)
+
+
+# In[102]:
+
+
+df1 = pd.get_dummies(data=df,columns=['InternetService','Contract','PaymentMethod'])
+
+
+# In[103]:
+
+
+df1.head(3)
+
+
+# In[104]:
+
+
+bool_to_number = ['InternetService_DSL','InternetService_Fiber optic','InternetService_No','Contract_Month-to-month','Contract_One year','Contract_Two year','PaymentMethod_Bank transfer (automatic)','PaymentMethod_Credit card (automatic)','PaymentMethod_Electronic check','PaymentMethod_Mailed check']
+
+
+# In[111]:
+
+
+for ite in bool_to_number:
+    df1[ite].replace({True:1,False:0}, inplace=True)
+
+
+# In[112]:
+
+
+df1.head(3)
+
+
+# In[113]:
+
+
+df1.drop('customerID', axis=1, inplace=True)
+
+
+# In[114]:
+
+
+df1.dtypes
+
+
+# In[116]:
+
+
+cols_to_scale = ['tenure','MonthlyCharges','TotalCharges']
+
+
+# In[117]:
+
+
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+df1[cols_to_scale] = scaler.fit_transform(df1[cols_to_scale])
+
+
+# In[118]:
+
+
+df1[cols_to_scale].head(2)
+
+
+# In[119]:
+
+
+x = df1.drop('Churn', axis=1)
+y = df1['Churn']
+
+
+# In[120]:
+
+
+x.shape
+
+
+# In[121]:
+
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2,random_state=5)
+
+
+# In[122]:
+
+
+x_train.shape 
+
+
+# In[123]:
+
+
+x_test.shape
+
+
+# In[124]:
+
+
+x_train[:2]
+
+
+# In[125]:
+
+
+import tensorflow as tf
+from tensorflow import keras
+
+model = keras.Sequential([
+    keras.layers.Dense(20,input_shape=(26,), activation='relu'),
+    keras.layers.Dense(1, activation='sigmoid')
+])
+model.compile(optimizer='adam',
+             loss='binary_crossentropy',
+             metrics=['accuracy'])
+model.fit(x_train,y_train, epochs=100)
+
+
+# In[126]:
+
+
+model.evaluate(x_test,y_test)
+
+
+# In[127]:
+
+
+yp = model.predict(x_test)
+
+
+# In[128]:
+
+
+yp[:5]
+
+
+# In[130]:
+
+
+y_test[:5]
+
+
+# In[131]:
+
+
+yp_predicted = []
+
+
+# In[132]:
+
+
+for element in yp:
+    if element > 0.5:
+        yp_predicted.append(1)
+    else:
+        yp_predicted.append(0)    
+
+
+# In[133]:
+
+
+yp_predicted[:5]
+
+
+# # classification Report and Confusion Metrics
+
+# In[134]:
+
+
+from sklearn.metrics import confusion_matrix, classification_report
+print(classification_report(y_test,yp_predicted))
+
+
+# In[135]:
+
+
+import seaborn as sn
+cm = tf.math.confusion_matrix(labels=y_test,predictions=yp_predicted)
+plt.figure(figsize=(10,7))
+sn.heatmap(cm, annot=True,fmt='d')
+plt.xlabel('predicted')
+plt.ylabel('truth')
+
+
+# # Handling Imbalance in Data Sets
+
+# In[136]:
+
+
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.metrics import confusion_matrix, classification_report
+
+
+# In[137]:
+
+
+def ANN(x_train, y_train,x_test, y_test,loss, weights):
+    model = keras.Sequential([
+        keras.layers.Dense(26, input_dim=26,activation='relu'),
+        keras.layers.Dense(15,activation='relu'),
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer='adam',loss=loss,
+                  metrics=['accuracy'])
+    
+    if weights == -1:
+        model.fit(x_train,y_train,epochs=100)
+    else:
+        model.fit(x_train,y_train,epochs=100)
+        
+    print(model.evaluate(x_test, y_test))
+    y_preds = model.predict(x_test)
+    y_preds = np.round(y_preds)
+    
+    print('Classification Report: \n', classification_report(y_test,y_preds))
+    
+    return y_preds
+
+
+# In[138]:
+
+
+y_preds = ANN(x_train, y_train,x_test, y_test,'binary_crossentropy', 1)
+
+
+# In[139]:
+
+
+y_test.value_counts()
+
+
+# NOTICE THE IMBALANCE OF THE 0th class and the 1s class.
+
+# # # 1st Technique of handling imbalance data set
+# 
+
+# In[145]:
+
+
+# class count
+count_class_0, count_class_1 = df1.Churn.value_counts()
+
+
+# In[147]:
+
+
+# Divide by Class
+df_class_0 = df1[df1['Churn'] == 0]
+df_class_1 = df1[df1['Churn'] == 1]
+
+
+# In[148]:
+
+
+df1.Churn.value_counts()
+
+
+# In[149]:
+
+
+df_class_0.sample(count_class_1).shape
+
+
+# In[153]:
+
+
+df_class_0_under = df_class_0.sample(count_class_1)
+df_test_under = pd.concat([df_class_0_under,df_class_1], axis=0)
+
+print('Random Under-Sampling: Technique')
+print(df_test_under.Churn.value_counts())
+
+
+# In[154]:
+
+
+x = df_test_under.drop('Churn', axis=1)
+y = df_test_under['Churn']
+
+
+# In[155]:
+
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2,random_state=15, stratify=y)
+
+
+# In[157]:
+
+
+y_train.value_counts()
+
+
+# In[158]:
+
+
+y_preds = ANN(x_train,y_train,x_test,y_test,'binary_crossentropy', -1)
+
+
+# In[ ]:
+
+
+
+
